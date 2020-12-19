@@ -1,0 +1,15 @@
+[package]
+name = "automated_project_setup"
+version = "0.1.0"
+authors = ["james wilson <james.n.wilson@accenture.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+nom = "6.0.1"
+serde = { version = "1.0", features = ["derive"] }
+serde_yaml = "0.8"
+structopt = "0.3.13"
+failure = "0.1.8"
+exitfailure = "0.5.1"
