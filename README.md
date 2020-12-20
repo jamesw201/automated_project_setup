@@ -80,3 +80,17 @@ DynamoDb (or any other sdk call) dependencies will generate different mocks and 
 - how do we handle apis? Probably just add a field called endpoint which looks like: 'GET /domain/api/endpoint{variable}'. This could lead to auto generated component_tests.
 - how generic can this be made? How much effort would it take to change the look/feel/structure/design-methodology if someone has different preferences/requirements.
 - if a function receives a ```Result[sucess,failure]``` type in its input then we can bind in one way, or if it takes a domain type then we can just bind the success part to the next function in the workflow.
+
+<br />
+&nbsp;
+
+## Future goals
+[operation replace all colleagues]  
+Write ai to fill in the function bodies. It should:
+- convert from one type to another
+    starting singluar input->to singluar->output
+- guess at the correct method call to make on a dependency, this will be aided by the function name which calls the dependency.
+    Ie. get_all_users() will most likely call requests.get() 
+        update_account() will most likely call something like dynamo.update()
+
+Leverage any existing ai codebase that may be able to do this already...

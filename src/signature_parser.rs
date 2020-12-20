@@ -2,27 +2,27 @@ use serde::{Deserialize, Serialize};
 extern crate nom;
 use nom::{
     branch::alt,
-    bytes::complete::{escaped, is_not, tag, take, take_while, take_until},
-    character::complete::{alphanumeric1, char, one_of, multispace0, newline, not_line_ending, line_ending, space0, space1},
-    multi::{many0, many1, separated_list0, fold_many0},
-    sequence::{delimited, preceded, pair, separated_pair, terminated},
+    bytes::complete::{tag, take_while, take_until},
+    character::complete::{alphanumeric1, char, multispace0, space0},
+    multi::separated_list0,
+    sequence::{preceded, separated_pair, terminated},
     IResult
 };
 
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
-struct ApplicationType {
+pub struct ApplicationType {
     type_name: String,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
-struct ApplicationParentType {
+pub struct ApplicationParentType {
     type_name: String,
     children: Vec<ParameterType>,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
-struct Dependency {
+pub struct Dependency {
     dependency_name: String,
 }
 
@@ -43,9 +43,18 @@ struct FunctionParameter {
 pub struct FunctionSignature {
     name: String,
     input: Vec<FunctionParameter>,
-    output: ApplicationType,
+    output: ParameterType,
 }
 
+
+fn valid_type_identifier_char(c: char) -> bool {
+    c.is_alphanumeric() || c == '[' || c == ']' || c == '{' || c == '}'
+}
+
+
+fn valid_type_identifier(i: &str) -> IResult<&str, &str> {
+    take_while(valid_type_identifier_char)(i)
+}
 
 fn valid_identifier_char(c: char) -> bool {
     c.is_alphanumeric() || c == '_'
@@ -62,11 +71,7 @@ fn parse_function_name(i: &str) -> IResult<&str, &str> {
 }
 
 
-fn parse_type(i: &str) -> IResult<&str, ParameterType> {
-    println!("parsing type: {}", &i);
-    // TODO: 
-    // [ ] handle parent types
-    // [ ] handle dependency types
+fn parse_application_type(i: &str) -> IResult<&str, ParameterType> {
     let (rest, result) = alphanumeric1(i)?;
     Ok((
         rest, ParameterType::ApplicationType( ApplicationType { type_name: String::from(result) } )
@@ -74,8 +79,41 @@ fn parse_type(i: &str) -> IResult<&str, ParameterType> {
 }
 
 
+fn parse_parent_type(i: &str) -> IResult<&str, ParameterType> {
+    let (bracket_rest, type_name) = alphanumeric1(i)?;
+    
+    let (rest, bracket_contents) = preceded(tag("["), terminated(separated_list0(tag(","), parse_type), tag("]")))(bracket_rest)?;
+
+    let param = ParameterType::ApplicationParentType(
+        ApplicationParentType { type_name: String::from(type_name), children: bracket_contents }
+    );
+
+    Ok((rest, param))
+}
+
+
+fn parse_dependency_type(i: &str) -> IResult<&str, ParameterType> {
+    let (rest, result) = preceded(preceded(space0, tag("{")), terminated(alphanumeric1, tag("}")))(i)?;
+
+    let param = ParameterType::Dependency ( Dependency{dependency_name: String::from(result) });
+    Ok((rest, param))
+}
+
+
+fn parse_type(i: &str) -> IResult<&str, ParameterType> {
+    preceded(
+        space0,
+        alt((
+            parse_dependency_type,
+            parse_parent_type,
+            parse_application_type,
+        ))
+    )(i)
+}
+
+
 fn parse_argument(i: &str) -> IResult<&str, FunctionParameter> {
-    let (rest, (left, right)) = separated_pair(preceded(space0, valid_identifier), preceded(space0, char(':')), preceded(space0, alphanumeric1))(i)?;
+    let (rest, (left, right)) = separated_pair(preceded(space0, valid_identifier), preceded(space0, char(':')), preceded(space0, valid_type_identifier))(i)?;
     let (_, application_type) = parse_type(right)?;
     let param = FunctionParameter { name: String::from(left), ptype: application_type };
     Ok((rest, param))
@@ -93,28 +131,29 @@ fn parse_function_arguments(i: &str) -> IResult<&str, Vec<FunctionParameter>> {
     )(i)
 }
 
+fn parse_output(i: &str) -> IResult<&str, ParameterType> {
+    preceded(
+        preceded(space0, tag("->")), 
+            preceded(space0, parse_type)
+    )(i)
+}
+
     
 #[allow(dead_code)]
 pub fn root(i: &str) -> IResult<&str, FunctionSignature> {
-    println!("input: {}", &i);
     let (rest, function_name) = parse_function_name(i)?;
     let (rest, params) = parse_function_arguments(rest)?;
+    let (_, output) = parse_output(rest)?;
 
     let function_signature = FunctionSignature {
         name: String::from(function_name),
         input: params,
-        output: ApplicationType { type_name: String::from("Result") },
+        output,
     };
 
     Ok(("", function_signature))
 }
 
-// TODO:
-// [√] match the function name
-// [√] match function parameters
-// [ ] match nested lists of Types
-// [ ] match dependency input
-// [ ] match output
 
 #[cfg(test)]
 mod tests {
@@ -122,24 +161,50 @@ mod tests {
 
     #[test]
     fn function_signature_test() {
-        let data = r#"get_account(id: AccountId, blablob: Bibble) -> Result[Account, ErrorMsg]"#;
+        let data = r#"get_users_for_account(http_client: {requests}, account_ids: List[AccountId]) -> Result[List[User], ErrorMsg]"#;
         let expected = FunctionSignature { 
-            name: String::from("get_account"), 
+            name: String::from("get_users_for_account"), 
             input: vec![
                 FunctionParameter { 
-                    name: String::from("id"), 
-                    ptype: ParameterType::ApplicationType(
-                        ApplicationType { type_name: String::from("AccountId") }
+                    name: String::from("http_client"), 
+                    ptype: ParameterType::Dependency(
+                        Dependency { dependency_name: String::from("requests") }
                     )
                 },
                 FunctionParameter {
-                    name: String::from("blablob"), 
-                    ptype: ParameterType::ApplicationType(
-                        ApplicationType { type_name: String::from("Bibble") }
+                    name: String::from("account_ids"), 
+                    ptype: ParameterType::ApplicationParentType(
+                        ApplicationParentType {
+                            type_name: String::from("List"),
+                            children: vec![
+                                ParameterType::ApplicationType(
+                                    ApplicationType { type_name: String::from("AccountId") }
+                                )
+                            ]
+                        }
                     )
                 }
             ], 
-            output: ApplicationType { type_name: String::from("Result") }
+            output: ParameterType::ApplicationParentType(
+                ApplicationParentType {
+                    type_name: String::from("Result"),
+                    children: vec![
+                        ParameterType::ApplicationParentType(
+                            ApplicationParentType {
+                                type_name: String::from("List"),
+                                children: vec![
+                                    ParameterType::ApplicationType(
+                                        ApplicationType { type_name: String::from("User") }
+                                    )
+                                ]
+                            }
+                        ),
+                        ParameterType::ApplicationType(
+                            ApplicationType { type_name: String::from("ErrorMsg") }
+                        )
+                    ]
+                }
+            )
         };
         let result = root(data);
         assert_eq!(result, Ok(("", expected)))
@@ -171,7 +236,31 @@ mod tests {
         );
         assert_eq!(result, Ok(("", expected)))
     }
-    
+
+    #[test]
+    fn parse_nested_parenttype_test() {
+        let data = "AccountId[User[Email]]";
+        let result = parse_type(data);
+        let expected = ParameterType::ApplicationParentType(
+            ApplicationParentType { 
+                type_name: String::from("AccountId"),
+                children: vec![
+                    ParameterType::ApplicationParentType(
+                        ApplicationParentType { 
+                            type_name: String::from("User"),
+                            children: vec![
+                                ParameterType::ApplicationType(
+                                    ApplicationType { type_name: String::from("Email") }
+                                )
+                            ]
+                        }
+                    )
+                ]
+            }
+        );
+        assert_eq!(result, Ok(("", expected)))
+    }
+
     #[test]
     fn parse_dependency_type_test() {
         let data = "{requests}";
@@ -192,15 +281,6 @@ mod tests {
         let expected = FunctionParameter { name: String::from("id"), ptype: ParameterType::ApplicationType(application_type) };
         assert_eq!(result, Ok(("", expected)))
     }
-
-    // #[test]
-    // fn function_signature_with_dependency_test() {
-    //     let data = r#""get_users_for_account(http_client: {requests}, account_ids: List[AccountId]) -> Result[List[User], ErrorMsg]""#;
-    //     let expected = FunctionSignature{ name: String::from("someVariable"), input: vec![], output: vec![] };
-    //     let result = root(data).unwrap();
-
-    //     assert_eq!(result, ("", expected))
-    // }
 
     // #[test]
     // fn invalid_syntax_function_signature_test() {
