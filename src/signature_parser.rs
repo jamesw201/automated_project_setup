@@ -23,7 +23,7 @@ pub struct ApplicationParentType {
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct Dependency {
-    dependency_name: String,
+    pub dependency_name: String,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
@@ -35,8 +35,8 @@ pub enum ParameterType {
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 struct FunctionParameter {
-    name: String,
-    ptype: ParameterType,
+    pub name: String,
+    pub ptype: ParameterType,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
@@ -44,6 +44,19 @@ pub struct FunctionSignature {
     name: String,
     input: Vec<FunctionParameter>,
     output: ParameterType,
+}
+
+impl FunctionSignature {
+    pub fn list_dependencies(&self) -> Vec<&Dependency> {
+        // return a list of all dependencies
+        self.input.iter().flat_map(|param| {
+            match &param.ptype {
+                ParameterType::Dependency(dep) => Some(dep),
+                _ => None,
+            }
+        }).collect()
+    }
+
 }
 
 

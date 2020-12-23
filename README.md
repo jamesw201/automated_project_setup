@@ -11,6 +11,14 @@ tags: project idea
 Inputs to the programme can be converted into algebraic types using the  input_parser application.
 <br />
 
+&nbsp;
+
+## Tasks
+[ ] generate application files from function signature ASTs and mustache templates  
+[ ] select mocks for dependencies  
+[ ] generate tests files  
+ 
+&nbsp;
 
 A **basic** schema should be enough to setup a programme using functional patterns which ensure that best practice is followed for the following critical application steps:
 
@@ -94,3 +102,10 @@ Write ai to fill in the function bodies. It should:
         update_account() will most likely call something like dynamo.update()
 
 Leverage any existing ai codebase that may be able to do this already...
+
+### AI Ideas
+the User writes a brief comment for each function. The AI uses the comment to help convert between the input type and the output type.
+
+- We could employ a transform like config approach for the unimplemented methods to provide the functionality. Although in this case it would need to work with algebraic datatypes and generate functional code.
+
+Even if this can't be used in conjunction with AI from the start, it could generate the data needed to inform an AI over time.

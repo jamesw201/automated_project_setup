@@ -1,0 +1,18 @@
+mocks:
+    - name: 'dynamodb'
+      imports: []
+      path: "dynamo_mock.hbs"
+      tests: ""
+
+    - name: 'requests'
+      imports: []
+      path: "requests_mock.hbs"
+      tests: ""
+
+    - name: 'aws-sdk/s3'
+      imports:
+        - "from botocore.response import StreamingBody"
+        - "import io"
+        - "import json"
+      path: "s3_mock.hbs"
+      tests: ""

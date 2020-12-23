@@ -1,10 +1,6 @@
 project_name: 'my_project'
 root_directory: '~/repos/my-repo/'
-language: 'javascript/python/rust/go'
-dependencies: 
-    - requests
-    - aws-sdk/dynamodb
-    - aws-sdk/s3
+language: 'python' # [ javascript, python, rust, go ]
 system_types: 'path/to/system-types/directory'
 domain_types: 'path/to/domain-types/directory'
 files:
@@ -14,16 +10,16 @@ files:
     - path: 'src/domains/account'
       methods:
         - 'get_users_for_account(http_client: {requests}, account_ids: List[AccountId]) -> Result[List[User], ErrorMsg]'
-        - 'get_account(id: AccountId) -> Result[Account, ErrorMsg]'
+        - 'get_account(id: AccountId) -> Result[Account, ErrorMsg]'        
     - path: 'src/domains/user'
       methods:
-        - 'update_user(user_id: UserId) -> Result[None, ErrorMsg]'
+        - 'update_user(dynamo: {dynamodb}, user_id: UserId) -> Result[List[User], ErrorMsg]'
     - path: 'src/domains/role'
       methods: 
-        - ''
+        - 'convert_to_dto(users: List[User]) -> Result[List[TableUsers], ErrorMsg]'
     - path: 'src/cleanup_account_users'
       methods: 
-        - ''
+        - 'persist_users(users: List[TableUsers]) -> None'
 workflow:
     - validate_input
     - get_users_for_account
