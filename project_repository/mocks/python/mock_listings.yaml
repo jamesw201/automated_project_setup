@@ -13,7 +13,7 @@ mocks:
                 return self.json_data
       tests:
         - description: 'handle insufficient capacity error'
-          mock_response: ''
+          mock_response: 'return_value={ "statusCode": 200 }'
 
 
     - name: 'requests'
@@ -28,9 +28,9 @@ mocks:
             def json(self):
                 return self.json_data
       tests: 
-        - description: 'gracefully handle an http500 error'
+        - description: 'handle an http500 error'
           mock_response: 'return_value={ "statusCode": 500 }'
-        - description: 'gracefully handle an http400 error'
+        - description: 'handle an http400 error'
           mock_response: 'return_value={ "statusCode": 400 }'
         - description: 'handle an http200 response with errors in the body'
           mock_response: 'return_value={ "statusCode": 200, "body": { "data": {}, "errors": ["mocked bad response"] } }'

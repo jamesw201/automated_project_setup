@@ -10,7 +10,7 @@ files:
     - path: 'src/domains/account'
       methods:
         - 'get_users_for_account(http_client: {requests}, account_ids: List[AccountId]) -> Result[List[User], ErrorMsg]'
-        - 'get_account(id: AccountId) -> Result[Account, ErrorMsg]'
+        - 'get_account(dynamo: {dynamodb}, id: AccountId) -> Result[Account, ErrorMsg]'
     - path: 'src/domains/user'
       methods:
         - 'update_user(dynamo: {dynamodb}, user_id: UserId) -> Result[List[User], ErrorMsg]'

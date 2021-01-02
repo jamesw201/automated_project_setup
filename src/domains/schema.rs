@@ -151,10 +151,10 @@ impl ParsedSchema {
                 println!("{}: {:?}", key, val);
                 println!("Application root dir: {:?}\n", self.root_directory);
 
-                self.create_mocks_file(&mock_listings); // TODO: this needs to return a list of mocks to be included in a mocks files
-                self.create_application_files();
-                self.create_test_files(&mock_listings);
                 self.create_main_file();
+                self.create_application_files();
+                self.create_mocks_file(&mock_listings); // TODO: this needs to return a list of mocks to be included in a mocks files
+                self.create_test_files(&mock_listings);
             },
             None => println!("{} is not defined in the environment.", key),
         }
@@ -170,8 +170,10 @@ impl ParsedSchema {
 
 
     pub fn create_mocks_file(&self, mock_listings: &MockListing) -> Result<(), ExitFailure> {
-        let dependencies: Vec<&Dependency> = self.list_dependencies();
-        
+        let mut dependencies: Vec<&Dependency> = self.list_dependencies();
+        dependencies.sort_by(|a, b| b.dependency_name.cmp(&a.dependency_name));
+        dependencies.dedup();
+
         let mock_configs: Vec<&MockConfig> = dependencies.into_iter().flat_map(|dependency| {
             mock_listings.mocks.iter().find(|mock| mock.name == dependency.dependency_name)
         }).collect();
@@ -282,6 +284,7 @@ impl ParsedSchema {
             let mut imports: Vec<String> = methods_and_mocks.iter().map(|mams| {
                 mams.mocks.iter().flat_map(|mock| mock.imports.clone()).collect()
             }).collect();
+            // TODO: it should import RequestsMock not requests?
             let joined_dependencies: String = combined_file_dependencies.iter().map(|dep| dep.dependency_name.clone()).collect::<Vec<String>>().join(",");
             // TODO: this is python specific, generalise.
             imports.push(format!("from tests.mocks import {}", joined_dependencies));

@@ -37,7 +37,6 @@ def handler(event, context):
                 | {{ step }} \
             {% endif -%}
         {% endfor %}
-
         logging.info(f'generated-project result: {result.value}')
 
         return match(result,
