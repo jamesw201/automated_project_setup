@@ -1,18 +1,52 @@
 mocks:
     - name: 'dynamodb'
       imports: []
-      path: "dynamo_mock.hbs"
-      tests: ""
+      mock: |-
+        class DynamodbMock:
+            def __init__(self, json_data={}, throws=None):
+                self.json_data = json_data
+                self.throws = throws
+
+            def update_item(self, **kwargs):
+                if self.throws:
+                    raise Exception(self.throws)
+                return self.json_data
+      tests:
+        - description: 'handle insufficient capacity error'
+          mock_response: ''
+
 
     - name: 'requests'
-      imports: []
-      path: "requests_mock.hbs"
-      tests: ""
+      imports: 
+        - from botocore.response import StreamingBody
+      mock: |-
+        class RequestsMock:
+            def __init__(self, json_data, status_code):
+                self.json_data = json_data
+                self.status_code = status_code
 
-    - name: 'aws-sdk/s3'
-      imports:
-        - "from botocore.response import StreamingBody"
-        - "import io"
-        - "import json"
-      path: "s3_mock.hbs"
-      tests: ""
+            def json(self):
+                return self.json_data
+      tests: 
+        - description: 'gracefully handle an http500 error'
+          mock_response: 'return_value={ "statusCode": 500 }'
+        - description: 'gracefully handle an http400 error'
+          mock_response: 'return_value={ "statusCode": 400 }'
+        - description: 'handle an http200 response with errors in the body'
+          mock_response: 'return_value={ "statusCode": 200, "body": { "data": {}, "errors": ["mocked bad response"] } }'
+
+
+    - name: 's3'
+      imports: 
+        - from botocore.response import StreamingBody
+      mock: |-
+        def create_s3_response(message):
+            encoded_message = json.dumps(message).encode()
+            raw_stream = StreamingBody(
+                io.BytesIO(encoded_message),
+                len(encoded_message)
+            )
+            return {
+                'Body': raw_stream
+            }
+      tests: []

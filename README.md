@@ -14,11 +14,23 @@ Inputs to the programme can be converted into algebraic types using the  input_p
 &nbsp;
 
 ## Tasks
-[ ] generate application files from function signature ASTs and mustache templates  
-[ ] select mocks for dependencies  
+[√] generate application files from function signature ASTs and mustache templates  
+[√] select mocks for dependencies  
+[√] create directories with __init__.py or mod.rs files  
+[ ] solve how do we get default data from types?  
+[ ] generate data from default implementations of types  
 [ ] generate tests files  
- 
+[ ] generate the main/index file with partially applied dependencies  
+[ ] generate default objects from their data types  
+
 &nbsp;
+
+When creating an application the error states are mainly driven by the third party async integrations. Ie. if you import 
+an http client then you'll always need to accomodate the possibility of 400/500 errors. If you import the aws dynamo sdk 
+then you'll need to accomodate the possibility of something like inadeqate capacity provision errors. So if we know this and we have the basic function signatures of our application then we should be able to generate unit tests which force us to appropriately handle all potential bad outcomes.
+
+This stops us reinventing the wheel every time we programme a workflow that includes async integrations. We can save hours of development time and build with confidence knowing that our software behaves appropriately when the inevitable fault scenarios occur.
+
 
 A **basic** schema should be enough to setup a programme using functional patterns which ensure that best practice is followed for the following critical application steps:
 
@@ -50,10 +62,6 @@ If there is an error in the way the Developer has specified their types then the
 project-name: 'my_project'
 root-directory: '~/repos/my-repo/'
 language: 'javascript/python/rust/go'
-dependencies: 
-    - requests
-      aws-sdk/dynamodb
-      aws-sdk/s3
 system-types: 'path/to/system-types/directory'
 domain-types: 'path/to/domain-types/directory'
 files:
@@ -109,3 +117,24 @@ the User writes a brief comment for each function. The AI uses the comment to he
 - We could employ a transform like config approach for the unimplemented methods to provide the functionality. Although in this case it would need to work with algebraic datatypes and generate functional code.
 
 Even if this can't be used in conjunction with AI from the start, it could generate the data needed to inform an AI over time.
+
+- it would be nice to describe a method's functionality by speech and have that transcribed to text which is fed into our deep learning model which converts it to code in real time.
+
+Ie. for a given function:
+```
+- def get_active_users(records: List[User]) -> Result[ActiveUsers, ErrorMsg]
+```
+The developer would describe the functionality as "filters on records, returning those that have the 'active' flag set to true as ActiveUsers".
+
+In python this would generate:
+```
+def get_active_users(records: List[User]) -> Result[ActiveUsers, ErrorMsg]:
+    return [ActiveUser(user) for user in records if user.active == true]
+```
+
+To achieve this we'd need a good python->english parser. Given a predictable parser that at least handles simple functional transformations well, we could generate large volumes of training data.
+
+Users would provide less text but with the aid of an existing English AI model we could transfer learn well between the User's somewhat inaccurate function description and one which we can use to drive code generation.
+
+#### Idea
+Parse python into english sentences (might be easier if it's predominently functional map/filter/reduce). Use that along with the function signature AST. Employ transfer learning by taking a model that already handles english language well and train it on the code->english sentences. See if that combination can give us english->code capabilities...

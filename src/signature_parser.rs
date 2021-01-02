@@ -1,4 +1,3 @@
-use serde::{Deserialize, Serialize};
 extern crate nom;
 use nom::{
     branch::alt,
@@ -9,55 +8,10 @@ use nom::{
     IResult
 };
 
-
-#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
-pub struct ApplicationType {
-    type_name: String,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
-pub struct ApplicationParentType {
-    type_name: String,
-    children: Vec<ParameterType>,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
-pub struct Dependency {
-    pub dependency_name: String,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
-pub enum ParameterType {
-    ApplicationType(ApplicationType),
-    ApplicationParentType(ApplicationParentType),
-    Dependency(Dependency),
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
-struct FunctionParameter {
-    pub name: String,
-    pub ptype: ParameterType,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
-pub struct FunctionSignature {
-    name: String,
-    input: Vec<FunctionParameter>,
-    output: ParameterType,
-}
-
-impl FunctionSignature {
-    pub fn list_dependencies(&self) -> Vec<&Dependency> {
-        // return a list of all dependencies
-        self.input.iter().flat_map(|param| {
-            match &param.ptype {
-                ParameterType::Dependency(dep) => Some(dep),
-                _ => None,
-            }
-        }).collect()
-    }
-
-}
+use crate::domains::function_signature::{ 
+    ApplicationType, ApplicationParentType, 
+    FunctionParameter, FunctionSignature, Dependency, ParameterType
+};
 
 
 fn valid_type_identifier_char(c: char) -> bool {

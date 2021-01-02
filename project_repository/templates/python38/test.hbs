@@ -1,0 +1,16 @@
+import json
+from mock import MagicMock
+import os
+import sys
+{%- for import in imports -%}
+{{import}}
+{% endfor %}
+{{sys_path_assignment}}
+
+{% for local_import in local_imports %}
+{{local_import}}
+{% endfor %}
+{% for test in tests %}
+{{test}}
+
+{% endfor -%}

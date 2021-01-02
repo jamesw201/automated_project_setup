@@ -1,0 +1,52 @@
+#!/usr/bin/env python
+import logging
+import os
+
+from functools import partial
+from pampy import match, _
+
+# import business logic
+{%- for file in application_files %}
+{{file}}
+{%- endfor %}
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
+# setup dependencies
+{%- for dependency in dependencies %}
+{{dependency}}
+{%- endfor %}
+
+# Setting up async dependencies with partial application
+{%- for function_with_side_effect in functions_with_side_effects %}
+{{function_with_side_effect}}
+{%- endfor %}
+
+
+def handler(event, context):
+    logging.info(f'generated-project event: {event}')
+
+    try:
+        result = {% for step in workflow -%}
+            {%- if loop.first -%}
+            {{ step }}(event) \
+            {% elif loop.last -%}
+                | {{ step }}
+            {% else -%}
+                | {{ step }} \
+            {% endif -%}
+        {% endfor %}
+
+        logging.info(f'generated-project result: {result.value}')
+
+        return match(result,
+            Ok(_), lambda res: {'status': 200, 'data': res.msg},
+            Failure(_, _), lambda res, type: {'status': 400, 'data': res}  # type: ignore
+        )
+    except Exception as e:
+        print(f'unexpected error: {e}')
+
+
+if __name__ == '__main__':
+    handler(None, None)

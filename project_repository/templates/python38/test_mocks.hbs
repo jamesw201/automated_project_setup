@@ -1,5 +1,3 @@
-{{#each mock_list}}
-
-{{this}}
-
-{{/each}}
+{%- for mock in mock_list %}
+  {{mock}}
+{% endfor %}
