@@ -51,16 +51,25 @@ pub struct MockTest {
     pub mock_response: String,
 }
 
-#[derive(Serialize)]
-struct Product {
-    name: String
+
+fn create_mock_name(s: &str) -> String {
+    let mut c = s.chars();
+    match c.next() {
+        None => String::new(),
+        Some(f) => f.to_uppercase().collect::<String>() + c.as_str() + "Mock",
+    }
+}
+
+fn get_dot_separated_path(path: &PathBuf) -> String {
+    let path_string = path.as_path().display().to_string();
+    path_string.split("/").collect::<Vec<&str>>().join(".")
 }
 
 impl LanguageInterpreterForUnitTest for MockTest {
     fn as_python(&self, mock_ref: &str, mock_config: &MockConfig, target_ref: &str) -> String {
         let snake_case_description = self.description.replace(" ", "_");    
         format!("def test_{}():\n    {} = MagicMock({})\n    result = {}({})\n    assert 1 == 2", 
-            snake_case_description, mock_ref, self.mock_response, target_ref, mock_config.name)
+            snake_case_description, mock_ref, self.mock_response, target_ref, create_mock_name(&mock_config.name))
     }
     fn as_javascript(&self, mock_ref: &str, mock_config: &MockConfig, target_ref: &str) -> String {
         format!("it('{}', () => {{}}))", self.description)
@@ -70,6 +79,7 @@ impl LanguageInterpreterForUnitTest for MockTest {
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct MockConfig {
     pub name: String,
+    pub import_statement: String,
     pub imports: Vec<String>,
     pub mock: String,
     pub tests: Vec<MockTest>,
@@ -143,7 +153,6 @@ impl ParsedSchema {
         let mock_listing_path = std::path::PathBuf::from("./project_repository/mocks/python/mock_listings.yaml");
         let mock_listing_file_handler = std::fs::File::open(mock_listing_path)?;
         let mock_listings: MockListing = serde_yaml::from_reader(mock_listing_file_handler)?;
-        println!("mock file successfully read");
         
         let key = "PROJECT_SETUP_HOME";
         match env::var_os(key) {
@@ -151,7 +160,7 @@ impl ParsedSchema {
                 println!("{}: {:?}", key, val);
                 println!("Application root dir: {:?}\n", self.root_directory);
 
-                self.create_main_file();
+                self.create_main_file(&mock_listings);
                 self.create_application_files();
                 self.create_mocks_file(&mock_listings); // TODO: this needs to return a list of mocks to be included in a mocks files
                 self.create_test_files(&mock_listings);
@@ -250,7 +259,8 @@ impl ParsedSchema {
             let mock_ref: Cow<str> = if is_main {
                 "index.requests.get".into() // EXAMPLE
             } else {
-                format!("{}.get", &config.name).into()
+                let mock_name = create_mock_name(config.name.as_str());
+                format!("{}.get", &mock_name).into()
             };
             let method_name = method_and_mock.method.ast.name.as_str();
             config.tests.iter().map(|test| test.as_python(&mock_ref, config, method_name)).collect::<Vec<String>>()
@@ -262,7 +272,7 @@ impl ParsedSchema {
 
         let mocks = mock_listings.mocks.iter().flat_map(|mock| {
             if dependencies.contains(&mock.name) {
-                Some(   mock.clone())
+                Some(mock.clone())
             } else {
                 None
             }
@@ -285,7 +295,9 @@ impl ParsedSchema {
                 mams.mocks.iter().flat_map(|mock| mock.imports.clone()).collect()
             }).collect();
             // TODO: it should import RequestsMock not requests?
-            let joined_dependencies: String = combined_file_dependencies.iter().map(|dep| dep.dependency_name.clone()).collect::<Vec<String>>().join(",");
+            let joined_dependencies: String = combined_file_dependencies.iter().map(|dep| {
+                create_mock_name(dep.dependency_name.clone().as_str())
+            }).collect::<Vec<String>>().join(", ");
             // TODO: this is python specific, generalise.
             imports.push(format!("from tests.mocks import {}", joined_dependencies));
 
@@ -327,14 +339,36 @@ sys.path.insert(0, os.path.join(BASE_DIR, "../{}"))"#, path);
     }
 
 
-    fn create_main_file(&self) -> Result<(), ExitFailure> {
-        let application_files = vec!["application files", "apfile"];
-        let dependencies = vec!["dependencies", "dep2"];
-        let functions_with_side_effects = vec!["functions_with_side_effects", "sideeffect"];
-        
+    fn create_main_file(&self, mock_listings: &MockListing) -> Result<(), ExitFailure> {
+        let application_files: Vec<String> = self.files.iter().map(|file| {
+            let dot_separated_path = get_dot_separated_path(&file.path);
+            let method_names: String = file.methods.iter().map(|method| method.ast.name.clone()).collect::<Vec<String>>().join(", ");
+            format!("from {} import {}", dot_separated_path, method_names)
+        }).collect();
+
+        let mut dependencies: Vec<String> = self.list_dependencies().iter().map(|dep| dep.dependency_name.clone()).collect();
+        dependencies.sort();
+        dependencies.dedup();
+        let mock_configs: Vec<&MockConfig> = dependencies.into_iter().flat_map(|dependency| {
+            mock_listings.mocks.iter().find(|mock| mock.name == dependency)
+        }).collect();
+        let import_statements: Vec<String> = mock_configs.iter().map(|config| config.import_statement.clone()).collect();
+
+        let functions_with_side_effects: Vec<String> = self.files.iter().map(|file| {
+            file.methods.iter().map(|method| {
+                let dependency_names: String = method.list_dependencies().iter().map(|dep| dep.dependency_name.clone()).collect::<Vec<String>>().join(", ");
+                if dependency_names.len() > 0 {
+                    format!("{} = partial({}, {})\n", method.ast.name, method.ast.name, dependency_names)
+                } else {
+                    String::from("")
+                }
+            }).collect()
+        }).collect();
+
+        println!("functions_with_side_effects: {:?}", functions_with_side_effects);
         let mut context = Context::new();
         context.insert("application_files", &application_files);
-        context.insert("dependencies", &dependencies);
+        context.insert("dependencies", &import_statements);
         context.insert("functions_with_side_effects", &functions_with_side_effects);
         context.insert("workflow", &self.workflow);
         

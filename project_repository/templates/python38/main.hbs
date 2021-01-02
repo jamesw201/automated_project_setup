@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import logging
 import os
+import boto3
 
 from functools import partial
 from pampy import match, _
@@ -10,19 +11,18 @@ from pampy import match, _
 {{file}}
 {%- endfor %}
 
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
-
 # setup dependencies
 {%- for dependency in dependencies %}
 {{dependency}}
 {%- endfor %}
 
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
 # Setting up async dependencies with partial application
-{%- for function_with_side_effect in functions_with_side_effects %}
+{%for function_with_side_effect in functions_with_side_effects -%}
 {{function_with_side_effect}}
 {%- endfor %}
-
 
 def handler(event, context):
     logging.info(f'generated-project event: {event}')
