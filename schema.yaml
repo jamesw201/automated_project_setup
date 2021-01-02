@@ -23,6 +23,6 @@ files:
 workflow:
     - validate_input
     - get_users_for_account
-    - update_users
+    - update_user
     - convert_to_dto
     - persist_users
