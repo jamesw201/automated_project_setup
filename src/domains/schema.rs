@@ -164,6 +164,7 @@ impl ParsedSchema {
                 self.create_application_files();
                 self.create_mocks_file(&mock_listings); // TODO: this needs to return a list of mocks to be included in a mocks files
                 self.create_test_files(&mock_listings);
+                self.create_main_test_file(&mock_listings);
             },
             None => println!("{} is not defined in the environment.", key),
         }
@@ -303,11 +304,7 @@ impl ParsedSchema {
 
             let path = file.path.as_path().display().to_string();
             let test_file_path = path.replace("src", "tests");
-            let full_path = match self.language.as_str() {
-                "python" => format!("{}.py", test_file_path),
-                "javascript" => format!("{}.js", test_file_path),
-                _ => format!("{}", test_file_path),
-            };
+            let full_path = format!("{}.{}", test_file_path, self.get_file_type());
             
             let python_sys_path_assignment = format!(r#"BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(BASE_DIR)
@@ -335,6 +332,43 @@ sys.path.insert(0, os.path.join(BASE_DIR, "../{}"))"#, path);
         }
 
         // create separate test_main.py which requires all mocks
+        Ok(())
+    }
+
+
+    fn get_file_type(&self) -> &str {
+        match self.language.as_str() {
+            "python" => "py",
+            "javascript" => "js",
+            _ => "",
+        }
+    }
+
+
+    fn create_main_test_file(&self, mock_listings: &MockListing) -> Result<(), ExitFailure> {
+        let dependencies = self.list_dependencies();
+        let joined_dependencies: String = dependencies.iter().map(|dep| {
+            create_mock_name(dep.dependency_name.clone().as_str())
+        }).collect::<Vec<String>>().join(", ");
+
+        let imports = vec![format!("from tests.mocks import {}", joined_dependencies)];
+
+        let sys_path_assignment = format!(r#"BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(BASE_DIR)
+sys.path.insert(0, os.path.join(BASE_DIR, "../{}"))"#, self.root_directory);
+
+        let tests: Vec<String> = vec![];
+        let local_imports: Vec<String> = vec![String::from("import main")];
+
+        let mut context = Context::new();
+        context.insert("imports", &imports);
+        context.insert("local_imports", &local_imports);
+        context.insert("sys_path_assignment", &sys_path_assignment);
+        context.insert("tests", &tests);
+        let output = self.templates.render("test.hbs", &context)?;
+        
+        self.write_to_file(&output, format!("tests/test_main.py").as_str());
+
         Ok(())
     }
 
@@ -371,9 +405,9 @@ sys.path.insert(0, os.path.join(BASE_DIR, "../{}"))"#, path);
         context.insert("dependencies", &import_statements);
         context.insert("functions_with_side_effects", &functions_with_side_effects);
         context.insert("workflow", &self.workflow);
-        
+
         let output = self.templates.render("main.hbs", &context)?;
-        
+
         let full_path = match self.language.as_str() {
             "python" => "src/main.py",
             "javascript" => "src/index.js",

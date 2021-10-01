@@ -1,6 +1,10 @@
 ---
 tags: project idea
 ---
+
+export PROJECT_SETUP_HOME=/Users/james.n.wilson/code/nonwork/repos/automated_project_setup
+./target/release/automated_project_setup ./schema.yaml
+
 # Automated project setup
  
 - create types / select types from previous projects
@@ -13,15 +17,30 @@ Inputs to the programme can be converted into algebraic types using the  input_p
 
 &nbsp;
 
+## What should be tested?
+- is there value in creating data generators for types? To test for wider ranges of data inputs?
+- what kind of tests can be derived from an interface between two functions? 
+    Ie. if it's a list what happens if the list is empty?
+
+### Inside a step
+- what happens in the case of any known async dependency error state
+
+
+### At the workflow level
+- a step returned a failure
+- a step returned an empty success
+
 ## Tasks
 [√] generate application files from function signature ASTs and mustache templates  
 [√] select mocks for dependencies  
 [√] create directories with __init__.py or mod.rs files  
+[ ] assign a default response to a mock so that multiple mocks can be partially applied with all but
+one returning the default response.  
 [ ] solve how do we get default data from types?  
 [ ] generate data from default implementations of types  
 [ ] generate tests files  
-[ ] generate the main/index file with partially applied dependencies  
-[ ] generate default objects from their data types  
+[√] generate the main/index file with partially applied dependencies  
+[ ] generate javascript project  
 
 &nbsp;
 

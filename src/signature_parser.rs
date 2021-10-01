@@ -80,7 +80,11 @@ fn parse_type(i: &str) -> IResult<&str, ParameterType> {
 
 
 fn parse_argument(i: &str) -> IResult<&str, FunctionParameter> {
-    let (rest, (left, right)) = separated_pair(preceded(space0, valid_identifier), preceded(space0, char(':')), preceded(space0, valid_type_identifier))(i)?;
+    let (rest, (left, right)) = separated_pair(
+        preceded(space0, valid_identifier), 
+        preceded(space0, char(':')), 
+        preceded(space0, valid_type_identifier)
+    )(i)?;
     let (_, application_type) = parse_type(right)?;
     let param = FunctionParameter { name: String::from(left), ptype: application_type };
     Ok((rest, param))

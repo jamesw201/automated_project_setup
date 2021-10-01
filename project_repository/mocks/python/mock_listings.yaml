@@ -29,6 +29,7 @@ mocks:
 
             def json(self):
                 return self.json_data
+      default_response: 'return_value={ "statusCode": 200 }'
       tests: 
         - description: 'handle an http500 error'
           mock_response: 'return_value={ "statusCode": 500 }'
@@ -36,11 +37,28 @@ mocks:
           mock_response: 'return_value={ "statusCode": 400 }'
         - description: 'handle an http200 response with errors in the body'
           mock_response: 'return_value={ "statusCode": 200, "body": { "data": {}, "errors": ["mocked bad response"] } }'
+    
+    
+    - name: 'os'
+      import_statement: 'import os'
+      imports: []
+      mock: |-
+        class OsMock:
+            def __init__(self, json_data, status_code):
+                self.json_data = json_data
+                self.status_code = status_code
 
+            def environ(self, env_var_name):
+                return self.json_data
+      tests:
+        - description: 'handle missing env var'
+          mock_response: 'return_value={ "statusCode": 404 }'
+    
 
     - name: 's3'
       import_statement: 's3 = boto3.resource("s3")'
       imports: 
+        - import boto3
         - from botocore.response import StreamingBody
       mock: |-
         def create_s3_response(message):

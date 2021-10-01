@@ -1,5 +1,5 @@
 project_name: 'my_project'
-root_directory: '/Users/james.n.wilson/code/nonwork/repos/automated_project_setup/generated_project'
+root_directory: '/Users/james.n.wilson/Desktop/generated_project'
 language: 'python' # [ javascript, python, rust, go ]
 system_types: 'path/to/system-types/directory'
 domain_types: 'path/to/domain-types/directory'
@@ -9,8 +9,8 @@ files:
         - 'validate_input(input: Dict) -> Result[DynamoStreamEvent, ErrorMsg]'
     - path: 'src/domains/account'
       methods:
-        - 'get_users_for_account(http_client: {requests}, account_ids: List[AccountId]) -> Result[List[User], ErrorMsg]'
-        - 'get_account(os: {os}, id: AccountId) -> Result[Account, ErrorMsg]'
+        - 'get_users_for_account(http_client: {requests}, os: {os}, account_ids: List[AccountId]) -> Result[List[User], ErrorMsg]'
+        - 'get_account(dynamo: {dynamodb}, id: AccountId) -> Result[Account, ErrorMsg]'
     - path: 'src/domains/user'
       methods:
         - 'update_user(dynamo: {dynamodb}, user_id: UserId) -> Result[List[User], ErrorMsg]'
